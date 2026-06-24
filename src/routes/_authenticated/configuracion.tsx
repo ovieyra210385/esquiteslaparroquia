@@ -47,7 +47,7 @@ type Settings = {
 
 const defaults: Settings = {
   business_name: "Esquites La Parroquia",
-  slogan: "El sabor que nos une",
+  slogan: "¡El sabor que nos une!",
   address: "",
   phone: "",
   rfc: "",

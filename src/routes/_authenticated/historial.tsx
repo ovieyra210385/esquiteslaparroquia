@@ -29,11 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getSalesHistory,
-  getSalesSummary,
-  type SaleHistoryRow,
-} from "@/lib/history.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { buildTicketHash } from "@/lib/utils";
 import { SaleDetailDialog } from "@/components/SaleDetailDialog";
 import { toast } from "sonner";
@@ -78,7 +74,7 @@ function HistorialPage() {
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // ─── Queries ───
+  // ─── Queries (direct Supabase, like dashboard) ───
   const historyQ = useQuery({
     queryKey: [
       "sales-history",
@@ -91,29 +87,69 @@ function HistorialPage() {
       sortBy,
       sortOrder,
     ],
-    queryFn: () =>
-      getSalesHistory({
-        data: {
-          page,
-          pageSize,
-          dateFrom: dateFrom || null,
-          dateTo: dateTo || null,
-          paymentMethod: paymentFilter !== "all" ? paymentFilter : null,
-          status: statusFilter !== "all" ? statusFilter : null,
-          search: search || null,
-          sortBy,
-          sortOrder,
-        },
-      }),
+    queryFn: async () => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from("sales")
+        .select(
+          "id, folio, created_at, subtotal, tax, total, payment_method, cancelled, user_id, customer_id, cash_received, change_amount",
+          { count: "exact" }
+        )
+        .order(sortBy, { ascending: sortOrder === "asc" })
+        .range(from, to);
+
+      if (dateFrom) query = query.gte("created_at", dateFrom);
+      if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
+      if (paymentFilter !== "all") query = query.eq("payment_method", paymentFilter);
+      if (statusFilter === "cancelled") query = query.eq("cancelled", true);
+      else if (statusFilter === "active") query = query.eq("cancelled", false);
+      if (search) query = query.or(`folio.ilike.%${search}%,user_id.in.(select id from profiles where full_name.ilike.%${search}%)`);
+
+      const { data: sales, count, error } = await query;
+      if (error) throw new Error(error.message);
+
+      const rows = (sales ?? []).map((s: any) => ({
+        id: s.id,
+        folio: s.folio,
+        date: s.created_at,
+        cashier: "Cajero",
+        customer: null as string | null,
+        total: Number(s.total ?? 0),
+        payment: s.payment_method ?? "efectivo",
+        status: s.cancelled ? "Cancelada" : "Completada",
+      }));
+
+      return { rows, total: count ?? 0 };
+    },
     staleTime: 15_000,
   });
 
   const summaryQ = useQuery({
     queryKey: ["sales-summary", dateFrom, dateTo],
-    queryFn: () =>
-      getSalesSummary({
-        data: { dateFrom: dateFrom || null, dateTo: dateTo || null },
-      }),
+    queryFn: async () => {
+      let query = supabase
+        .from("sales")
+        .select("id, total, payment_method, cancelled, created_at");
+
+      if (dateFrom) query = query.gte("created_at", dateFrom);
+      if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
+
+      const { data: sales, error } = await query;
+      if (error) throw new Error(error.message);
+
+      const active = (sales ?? []).filter((s: any) => !s.cancelled);
+      const cancelled = (sales ?? []).filter((s: any) => s.cancelled);
+      const totalSales = active.reduce((sum, s) => sum + Number(s.total ?? 0), 0);
+
+      return {
+        totalSales,
+        saleCount: active.length,
+        cancelledCount: cancelled.length,
+        avgTicket: active.length > 0 ? totalSales / active.length : 0,
+      };
+    },
     staleTime: 30_000,
   });
 
@@ -133,7 +169,7 @@ function HistorialPage() {
     setPage(1);
   }, [today]);
 
-  const handleReprint = (sale: SaleHistoryRow) => {
+  const handleReprint = (sale: any) => {
     if (!sale) return;
     const hash = buildTicketHash({
       folio: String(sale.folio),
@@ -222,21 +258,6 @@ function HistorialPage() {
           </p>
         </Card>
       </div>
-
-      {/* Payment Breakdown */}
-      {summary?.paymentBreakdown && summary.paymentBreakdown.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {summary.paymentBreakdown.map((pb) => (
-            <Badge
-              key={pb.method}
-              variant="secondary"
-              className={`text-xs px-3 py-1 ${paymentColors[pb.method] || ""}`}
-            >
-              {paymentLabels[pb.method] || pb.method}: {fmt(pb.total)} ({pb.count})
-            </Badge>
-          ))}
-        </div>
-      )}
 
       {/* ─── Filters ─── */}
       <Card className="p-4">
@@ -352,7 +373,7 @@ function HistorialPage() {
                     Error al cargar el historial.
                   </td>
                 </tr>
-              ) : (historyQ.data?.sales ?? []).length === 0 ? (
+              ) : (historyQ.data?.rows ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-16">
                     <Receipt className="size-12 mx-auto text-muted-foreground/30 mb-3" />
@@ -363,7 +384,7 @@ function HistorialPage() {
                   </td>
                 </tr>
               ) : (
-                (historyQ.data?.sales ?? []).map((sale: SaleHistoryRow) => (
+                (historyQ.data?.rows ?? []).map((sale: any) => (
                   <tr
                     key={sale.id}
                     className="border-b border-border hover:bg-surface/50 transition-colors cursor-pointer"
@@ -436,7 +457,7 @@ function HistorialPage() {
         {!historyQ.isLoading && (historyQ.data?.total ?? 0) > 0 && (
           <div className="flex items-center justify-between p-3 border-t border-border bg-surface-2/50">
             <span className="text-xs text-muted-foreground">
-              {(historyQ.data?.sales?.length ?? 0) > 0
+              {(historyQ.data?.rows?.length ?? 0) > 0
                 ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, historyQ.data?.total ?? 0)} de ${historyQ.data?.total ?? 0}`
                 : "Sin resultados"}
             </span>

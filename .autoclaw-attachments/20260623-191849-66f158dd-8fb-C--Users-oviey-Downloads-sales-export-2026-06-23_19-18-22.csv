@@ -1,0 +1,12 @@
+id;folio;subtotal;tax;total;payment_method;cash_received;change_amount;created_at;user_id;cash_register_id;cancelled;cancelled_at;cancelled_by;customer_id;kds_status;status
+da91a49b-8883-4dd6-940c-4203ed104dca;LP-W0S5O-1001;40.00;0.00;40.00;efectivo;50.00;10.00;2026-06-23 20:42:22.007218;6dc556ce-448a-4b8f-8dd9-52a746836c65;0090fd20-fc1d-40a2-94ab-bc39338fdeac;false;;;;listo;completada
+0115f882-adfc-4251-b6b4-86b1449bdbdc;LP-VCJUK-1001;40.00;0.00;40.00;efectivo;50.00;10.00;2026-06-23 20:50:58.521926;6dc556ce-448a-4b8f-8dd9-52a746836c65;c58e8484-dfc3-4b8a-ab3e-25ca0988d93f;false;;;;listo;completada
+d11c95f6-9c96-4fd1-8576-0f1e3c007538;LP-VCJUK-1002;280.00;0.00;280.00;efectivo;300.00;20.00;2026-06-23 20:53:41.855903;6dc556ce-448a-4b8f-8dd9-52a746836c65;c58e8484-dfc3-4b8a-ab3e-25ca0988d93f;false;;;;listo;completada
+898c9698-069d-46cd-b856-40088a23d0e2;LP-0CFF5-1001;235.00;0.00;235.00;efectivo;300.00;65.00;2026-06-23 21:13:59.330298;6dc556ce-448a-4b8f-8dd9-52a746836c65;ebd3dea5-1e9c-4fdc-977c-f16f88c1fa7a;false;;;;listo;completada
+8814b92e-c614-402e-8bb7-ddae8d0241da;LP-2VZ8G-1001;80.00;0.00;80.00;efectivo;100.00;20.00;2026-06-23 21:18:04.147572;6dc556ce-448a-4b8f-8dd9-52a746836c65;0800fabf-aa2f-436f-992b-6052163a2194;false;;;;listo;completada
+c07d74bd-daf7-462a-aa14-999ab38262e6;LP-2VZ8G-1002;95.00;0.00;95.00;efectivo;100.00;5.00;2026-06-23 21:18:44.809083;6dc556ce-448a-4b8f-8dd9-52a746836c65;0800fabf-aa2f-436f-992b-6052163a2194;false;;;;listo;completada
+27e2f3be-2f55-43a0-936d-c82c8a80f10d;LP-0YYYX-1001;40.00;0.00;40.00;tarjeta;;;2026-06-23 23:50:36.545996;b2c62870-df86-42d5-9253-cced32bd1698;9dffafd2-0d87-4c50-9e8f-010c25932c7f;false;;;;listo;completada
+8ddcb888-3980-4f5d-8fb0-a7f0000119d4;LP-0YYYX-1002;75.00;0.00;75.00;efectivo;100.00;25.00;2026-06-24 00:25:33.368527;b2c62870-df86-42d5-9253-cced32bd1698;9dffafd2-0d87-4c50-9e8f-010c25932c7f;false;;;;listo;completada
+57b9dad2-980e-4d5f-9508-153e6ed5f6ef;LP-0YYYX-1003;95.00;0.00;95.00;efectivo;100.00;5.00;2026-06-24 00:34:37.590235;b2c62870-df86-42d5-9253-cced32bd1698;9dffafd2-0d87-4c50-9e8f-010c25932c7f;false;;;;listo;completada
+79a533d7-8b61-4365-bc0b-145c73305d40;LP-2JPZZ-1001;105.00;0.00;105.00;efectivo;200.00;95.00;2026-06-24 00:54:39.997017;b2c62870-df86-42d5-9253-cced32bd1698;9dffafd2-0d87-4c50-9e8f-010c25932c7f;false;;;;listo;completada
+cde2f10d-b895-4c43-b343-a4c3e0391eab;LP-2JPZZ-1003;160.00;0.00;160.00;efectivo;200.00;40.00;2026-06-24 01:06:25.721116;b2c62870-df86-42d5-9253-cced32bd1698;9dffafd2-0d87-4c50-9e8f-010c25932c7f;false;;;;listo;completada

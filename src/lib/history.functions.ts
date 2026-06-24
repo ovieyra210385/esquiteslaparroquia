@@ -114,6 +114,7 @@ export const getSalesHistory = createServerFn({ method: "GET" })
     else if (status === "active") query = query.eq("cancelled", false);
 
     const { data: sales, count, error } = await query;
+    console.log("[getSalesHistory] count:", count, "rows:", sales?.length, "error:", error?.message, "userId:", context.userId);
     if (error) throw new Error(error.message);
 
     // Fetch profiles & customers in batch

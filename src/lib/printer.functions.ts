@@ -41,41 +41,51 @@ async function buildTicketBuffer(opts: {
   const encoder = new EscPosEncoder();
   const widthMm = opts.settings.printer_width === 58 ? 58 : 80;
   const width = widthMm === 58 ? 32 : 48;
+  const bodyWidth = widthMm === 58 ? 30 : 42;
+  const bodyIndent = Math.floor((width - bodyWidth) / 2);
   const date = new Date(opts.createdAt);
   const dateStr = date.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "medium" });
+  const businessName = opts.settings.business_name ?? "Esquites La Parroquia";
+  const slogan = opts.settings.slogan ?? "¡El sabor que nos une!";
+  const address = opts.settings.address ?? "Acámbaro, Gto.";
 
   // Logo raster, centered & sized to printer width
   const logoRaster = Array.from(getLogoRaster(widthMm));
+  const logoOffset = widthMm === 58 ? 40 : 68;
 
-  let e = encoder.initialize().align("center").raw(logoRaster).newline()
-    .codepage("cp850")
-    .bold(true).size(2, 2).line(opts.settings.business_name ?? "Esquites La Parroquia").bold(false).size(1, 1);
-  if (opts.settings.slogan) e = e.line(opts.settings.slogan);
-  if (opts.settings.address) e = e.line(opts.settings.address);
+  let e = encoder.initialize().codepage("cp850").align("left").raw(horizontalPosition(logoOffset)).raw(logoRaster).newline().align("center").bold(true);
+  e = widthMm === 58 ? e.size(1, 1).line(businessName) : e.size(2, 1).line(businessName);
+  e = e.bold(false).size(1, 1).line(slogan).line(address);
   if (opts.settings.phone) e = e.line("Tel: " + opts.settings.phone);
-  e = e.newline().align("left").line("-".repeat(width))
-    .line(`Folio: ${opts.folio}`)
-    .line(`Fecha: ${dateStr}`)
-    .line(`Cajero: ${opts.cashier}`)
-    .line("-".repeat(width));
+  e = e.newline().align("left").line(centeredRule(bodyWidth, bodyIndent))
+    .line(indentLine(`Folio: ${opts.folio}`, bodyIndent))
+    .line(indentLine(`Fecha: ${dateStr}`, bodyIndent))
+    .line(indentLine(`Cajero: ${opts.cashier}`, bodyIndent))
+    .line(centeredRule(bodyWidth, bodyIndent));
 
   for (const it of opts.items) {
-    const left = `${it.qty}x ${it.name}`;
-    const right = `$${(it.price * it.qty).toFixed(2)}`;
-    e = e.line(padRight(left, width - right.length) + right);
-    for (const m of it.modifiers) e = e.line("  + " + m);
+    const price = formatMoney(it.price * it.qty);
+    const nameWidth = Math.max(12, bodyWidth - price.length - 1);
+    const nameLines = wrapText(`${it.qty}x ${it.name}`, nameWidth);
+    e = e.line(indentLine(padRight(nameLines[0] ?? "", bodyWidth - price.length) + price, bodyIndent));
+    for (const extraLine of nameLines.slice(1)) e = e.line(indentLine("   " + extraLine, bodyIndent));
+    for (const modifier of it.modifiers) {
+      for (const modifierLine of wrapText(`+ ${modifier}`, bodyWidth - 2)) {
+        e = e.line(indentLine("  " + modifierLine, bodyIndent));
+      }
+    }
   }
-  e = e.line("-".repeat(width))
-    .line(padRight("Subtotal", width - 10) + ("$" + opts.subtotal.toFixed(2)).padStart(10))
-    .line(padRight("Impuestos", width - 10) + ("$" + opts.tax.toFixed(2)).padStart(10))
-    .bold(true).line(padRight("TOTAL", width - 12) + ("$" + opts.total.toFixed(2)).padStart(12)).bold(false)
-    .line(padRight("Pago", width - opts.payment.length) + opts.payment.toUpperCase());
+  e = e.line(centeredRule(bodyWidth, bodyIndent))
+    .line(indentLine(moneyRow("Subtotal", opts.subtotal, bodyWidth), bodyIndent))
+    .line(indentLine(moneyRow("Impuestos", opts.tax, bodyWidth), bodyIndent))
+    .bold(true).line(indentLine(moneyRow("TOTAL", opts.total, bodyWidth), bodyIndent)).bold(false)
+    .line(indentLine(textRow("Pago", opts.payment.toUpperCase(), bodyWidth), bodyIndent));
   if (opts.received !== undefined) {
-    e = e.line(padRight("Recibido", width - 10) + ("$" + opts.received.toFixed(2)).padStart(10));
-    e = e.line(padRight("Cambio", width - 10) + ("$" + (opts.change ?? 0).toFixed(2)).padStart(10));
+    e = e.line(indentLine(moneyRow("Recibido", opts.received, bodyWidth), bodyIndent));
+    e = e.line(indentLine(moneyRow("Cambio", opts.change ?? 0, bodyWidth), bodyIndent));
   }
-  e = e.line("-".repeat(width)).align("center").newline();
-  if (opts.settings.footer_message) e = e.line(opts.settings.footer_message);
+  e = e.line(centeredRule(bodyWidth, bodyIndent)).align("center").newline();
+  e = e.line(opts.settings.footer_message ?? "¡Gracias por su compra!").line("esquiteslaparroquia.mx");
   e = e.newline().newline().newline();
   if (opts.settings.auto_cut !== false) e = e.cut();
   return e.encode();
@@ -170,7 +180,58 @@ async function buildCashCutBuffer(opts: {
   return e.encode();
 }
 
-const padRight = (s: string, len: number) => (s.length >= len ? s.slice(0, len) : s + " ".repeat(len - s.length));
+const formatMoney = (value: number) => "$" + value.toFixed(2);
+
+const moneyRow = (label: string, value: number, width: number) => {
+  const amount = formatMoney(value);
+  return padRight(label, width - amount.length) + amount;
+};
+
+const textRow = (label: string, value: string, width: number) => {
+  const safeValue = value.length > width ? value.slice(0, width) : value;
+  return padRight(label, width - safeValue.length) + safeValue;
+};
+
+const centeredRule = (width: number, indent: number) => " ".repeat(indent) + "-".repeat(width);
+
+const indentLine = (line: string, indent: number) => " ".repeat(indent) + line;
+
+const horizontalPosition = (dots: number) => [0x1b, 0x24, dots & 0xff, (dots >> 8) & 0xff];
+
+const padRight = (s: string, len: number) => {
+  const target = Math.max(0, len);
+  return s.length >= target ? s : s + " ".repeat(target - s.length);
+};
+
+const wrapText = (text: string, width: number) => {
+  const target = Math.max(1, width);
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [""];
+
+  const lines: string[] = [];
+  let line = "";
+  for (const word of normalized.split(" ")) {
+    if (word.length > target) {
+      if (line) {
+        lines.push(line);
+        line = "";
+      }
+      for (let index = 0; index < word.length; index += target) {
+        lines.push(word.slice(index, index + target));
+      }
+      continue;
+    }
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > target) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+};
 
 async function sendToPrinter(ip: string, port: number, data: Uint8Array): Promise<void> {
   const timeout = 5000; // 5 seconds timeout for WiFi printers

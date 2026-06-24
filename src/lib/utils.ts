@@ -208,7 +208,7 @@ export function printTicketBrowser(data: TicketPrintData) {
         <div class="ticket-header">
           <img src="${logoUrl}" alt="Logo" />
           <div class="ticket-business">Esquites La Parroquia</div>
-          <div class="ticket-slogan">El sabor que nos une</div>
+          <div class="ticket-slogan">¡El sabor que nos une!</div>
           <div class="ticket-address">Acámbaro, Gto.</div>
         </div>
         <div class="ticket-divider"></div>
@@ -259,7 +259,7 @@ export function buildTicketHash(data: TicketPrintData & {
   const payload = {
     ...data,
     businessName: data.businessName || "Esquites La Parroquia",
-    slogan: data.slogan || "El sabor que nos une",
+    slogan: data.slogan || "¡El sabor que nos une!",
     address: data.address || "Acámbaro, Gto.",
     phone: data.phone || "",
     footerMessage: data.footerMessage || "¡Gracias por su compra!",

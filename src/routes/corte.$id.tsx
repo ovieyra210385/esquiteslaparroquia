@@ -78,7 +78,7 @@ function CortePage() {
           <div className="corte-header">
             <img src={logoTicket} alt="Logo" className="corte-logo" />
             <h1 className="corte-title">Esquites La Parroquia</h1>
-            <p className="corte-subtitle">El sabor que nos une</p>
+            <p className="corte-subtitle">¡El sabor que nos une!</p>
             <p className="corte-address">Acámbaro, Gto.</p>
           </div>
 

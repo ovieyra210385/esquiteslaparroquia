@@ -189,7 +189,7 @@ export const getSaleForTicket = createServerFn({ method: "GET" })
         modifiers: (i.sale_item_modifiers ?? []).map((m: any) => m.modifier_name).filter(Boolean),
       })),
       businessName: settings?.business_name ?? "Esquites La Parroquia",
-      slogan: settings?.slogan ?? "El sabor que nos une",
+      slogan: settings?.slogan ?? "¡El sabor que nos une!",
       address: settings?.address ?? "Acámbaro, Gto.",
       phone: settings?.phone ?? "",
       footerMessage: settings?.footer_message ?? "¡Gracias por su compra!",
