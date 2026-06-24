@@ -1,7 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { streamText } from "ai";
-import { google } from "@ai-sdk/google";
-import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const chatWithAI = createServerFn({ method: "POST" })
@@ -9,6 +6,11 @@ export const chatWithAI = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { messages } = data as { messages: { role: string; content: string }[] };
     const { supabase } = context;
+
+    // Dynamic import so SSR build doesn't try to bundle @ai-sdk/google
+    const { streamText } = await import("ai");
+    const { google } = await import("@ai-sdk/google");
+    const { z } = await import("zod");
 
     const result = streamText({
       model: google("gemini-2.0-flash"),
