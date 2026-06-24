@@ -10,6 +10,8 @@ import {
   getRegisterHistory,
 } from "@/lib/cash.functions";
 import { printCashCutReceipt } from "@/lib/printer.functions";
+import { printCorteBrowser } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { DenominationCounter, type Breakdown } from "@/components/DenominationCounter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -650,12 +652,105 @@ function CloseCashDialog({
       const res: any = await fn({
         data: { realAmount: real, breakdown, notes: notes || undefined },
       });
-      setClosedRegId(res.registerId);
-      setClosedDiff(res.difference ?? diff);
-      toast.success(`Caja cerrada. Diferencia: ${fmt(res.difference ?? diff)}`);
+      const registerId = res.registerId as string;
+      setClosedRegId(registerId);
+      const d = (res.difference ?? diff) as number;
+      setClosedDiff(d);
+      toast.success(`Caja cerrada. Diferencia: ${fmt(d)}`);
       onDone();
-      // Auto-navigate to print the corte
-      setTimeout(() => navigate({ to: `/corte/${res.registerId}` }), 500);
+
+      // Fetch corte data and print via iframe
+      try {
+        const { data: reg } = await supabase
+          .from("cash_register")
+          .select("*")
+          .eq("id", registerId)
+          .single();
+
+        let cashierName = "Cajero";
+        if (reg?.user_id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", reg.user_id)
+            .maybeSingle();
+          cashierName = profile?.full_name ?? "Cajero";
+        }
+
+        const { data: sales } = await supabase
+          .from("sales")
+          .select("id, total, created_at, payment_method")
+          .eq("cash_register_id", registerId)
+          .is("cancelled", false);
+
+        const activeSales = (sales ?? []).filter((s: any) => s.status !== "cancelada");
+
+        let salesCash = 0, salesCard = 0, salesTransfer = 0;
+        for (const s of activeSales) {
+          const method = s.payment_method ?? "efectivo";
+          const total = Number(s.total ?? 0);
+          if (method === "efectivo") salesCash += total;
+          else if (method === "tarjeta") salesCard += total;
+          else if (method === "transferencia") salesTransfer += total;
+          else salesCash += total;
+        }
+
+        let topProducts: { name: string; quantity: number }[] = [];
+        if (activeSales.length > 0) {
+          const saleIds = activeSales.map((s: any) => s.id);
+          const { data: items } = await supabase
+            .from("sale_items")
+            .select("product_name, quantity")
+            .in("sale_id", saleIds);
+          const productMap: Record<string, number> = {};
+          for (const item of items ?? []) {
+            const name = item.product_name ?? "Producto";
+            productMap[name] = (productMap[name] || 0) + (item.quantity ?? 0);
+          }
+          topProducts = Object.entries(productMap)
+            .map(([name, quantity]) => ({ name, quantity }))
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 10);
+        }
+
+        let openingBreakdown: Record<string, number> | null = null;
+        let closingBreakdown: Record<string, number> | null = null;
+        try { if (reg?.opening_breakdown) openingBreakdown = reg.opening_breakdown as any; } catch {}
+        try { if (reg?.closing_breakdown) closingBreakdown = reg.closing_breakdown as any; } catch {}
+
+        const openingAmount = Number(reg?.opening_amount ?? 0);
+        const expectedAmount = openingAmount + salesCash;
+        const realAmount = Number(reg?.closing_amount ?? expectedAmount);
+        const difference = realAmount - expectedAmount;
+
+        const formatDisplay = (iso: string) => {
+          const d = new Date(iso);
+          return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        };
+
+        printCorteBrowser({
+          id: registerId,
+          openedAt: reg?.opened_at ? formatDisplay(reg.opened_at) : "—",
+          closedAt: reg?.closed_at ? formatDisplay(reg.closed_at) : null,
+          cashierName,
+          openingAmount,
+          openingBreakdown,
+          closingBreakdown,
+          salesCash,
+          salesCard,
+          salesTransfer,
+          salesCount: activeSales.length,
+          expectedAmount,
+          realAmount,
+          difference,
+          notes: reg?.notes ?? null,
+          topProducts,
+          printedAt: formatDisplay(new Date().toISOString()),
+        });
+      } catch (printErr: any) {
+        console.error("Error al imprimir corte:", printErr);
+        toast.error("No se pudo imprimir el corte. Usa el botón de imprimir.");
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -704,8 +799,8 @@ function CloseCashDialog({
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Button onClick={handleBrowserPrint} className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold">
-              <Monitor className="size-4 mr-2" /> Imprimir comprobante
+            <Button onClick={handleBrowserPrint} className="w-full bg-amber-600 hover:bg-amber-700 font-bold">
+              <Monitor className="size-4 mr-2" /> Reimprimir comprobante
             </Button>
             <Button
               variant="outline"
