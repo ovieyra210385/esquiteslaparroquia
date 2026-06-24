@@ -136,9 +136,9 @@ function CortePage() {
       .catch((e: any) => setError(e.message));
   }, [id]);
 
-  // Auto-print once data is rendered
+  // Auto-scroll to top when data loads
   useEffect(() => {
-    if (data) window.print();
+    if (data) window.scrollTo(0, 0);
   }, [data]);
 
   if (error) {
@@ -167,11 +167,11 @@ function CortePage() {
     <div className="min-h-screen bg-gray-100 flex items-start justify-center p-4 print:bg-white print:p-0">
       <div className="corte-wrapper">
         <div className="no-print flex gap-2 mb-3 justify-center">
-          <button onClick={() => window.print()} className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-lg transition">
-            🖨️ Imprimir corte
+          <button onClick={() => window.print()} className="px-8 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-lg transition text-lg animate-pulse">
+            🖨️  IMPRIMIR CORTE
           </button>
-          <button onClick={() => navigate({ to: "/caja" })} className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-medium transition">
-            Cerrar
+          <button onClick={() => navigate({ to: "/caja" })} className="px-5 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-medium transition">
+            Volver a caja
           </button>
         </div>
 
